@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using JsonForge.Services;
+using Microsoft.UI.Windowing;
 using Uno.Resizetizer;
 
 namespace JsonForge;
@@ -99,5 +100,62 @@ public partial class App : Application
 
         // Ensure the current window is active
         MainWindow.Activate();
+
+        // Guard against losing unsaved work when the window is closed.
+        MainWindow.AppWindow.Closing += OnAppWindowClosing;
+    }
+
+    private bool _closeConfirmed;
+    private bool _closePromptShowing;
+
+    private void OnAppWindowClosing(AppWindow sender, AppWindowClosingEventArgs args)
+    {
+        if (_closeConfirmed || _closePromptShowing)
+        {
+            return;
+        }
+
+        if (MainWindow?.Content is not Frame { Content: MainPage page } || !page.HasUnsavedChanges)
+        {
+            return;
+        }
+
+        // Cancel now, then close again for real once the user has decided.
+        args.Cancel = true;
+        _ = ConfirmCloseAsync(page);
+    }
+
+    private async Task ConfirmCloseAsync(MainPage page)
+    {
+        if (_closePromptShowing)
+        {
+            return;
+        }
+
+        _closePromptShowing = true;
+        try
+        {
+            var choice = await page.PromptUnsavedChangesAsync();
+            if (choice == UnsavedChangesChoice.Cancel)
+            {
+                return;
+            }
+
+            if (choice == UnsavedChangesChoice.Save && !await page.SaveNowAsync())
+            {
+                return; // Save failed or was cancelled; keep the window open.
+            }
+
+            _closeConfirmed = true;
+            MainWindow?.Close();
+        }
+        catch
+        {
+            // Never trap the user in a window that refuses to close.
+        }
+        finally
+        {
+            _closePromptShowing = false;
+        }
     }
 }

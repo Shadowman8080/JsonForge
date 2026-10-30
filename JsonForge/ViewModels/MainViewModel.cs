@@ -57,8 +57,18 @@ public partial class MainViewModel : ObservableObject
         ApplyAiState(aiState.Current);
         ApplyUserSettings(settings.Current);
         CurrentFileName = "Untitled";
-        IsDirty = false;
-        Source = SampleJson;
+
+        // Populate the initial document without marking it as unsaved work.
+        _suppressDirty = true;
+        try
+        {
+            Source = SampleJson;
+            IsDirty = false;
+        }
+        finally
+        {
+            _suppressDirty = false;
+        }
 
         StatusText = "Ready";
         DetectedFormatText = string.Empty;

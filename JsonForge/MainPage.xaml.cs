@@ -41,6 +41,60 @@ public sealed partial class MainPage : Page
         }
     }
 
+    /// <summary>True when the editor has unsaved work.</summary>
+    public bool HasUnsavedChanges => _vm?.IsDirty == true;
+
+    /// <summary>
+    /// Asks the user what to do about unsaved changes. Used when closing the window.
+    /// </summary>
+    public async Task<UnsavedChangesChoice> PromptUnsavedChangesAsync()
+    {
+        var name = string.IsNullOrWhiteSpace(_vm?.CurrentFileName) ? "This document" : $"\"{_vm!.CurrentFileName}\"";
+        var dialog = new ContentDialog
+        {
+            Title = "Unsaved changes",
+            Content = $"{name} has unsaved changes. Save before closing?",
+            PrimaryButtonText = "Save",
+            SecondaryButtonText = "Don't save",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+
+        var result = await dialog.ShowAsync();
+        return result switch
+        {
+            ContentDialogResult.Primary => UnsavedChangesChoice.Save,
+            ContentDialogResult.Secondary => UnsavedChangesChoice.DontSave,
+            _ => UnsavedChangesChoice.Cancel,
+        };
+    }
+
+    /// <summary>Runs the save command and reports whether the document is now clean.</summary>
+    public async Task<bool> SaveNowAsync()
+    {
+        if (_vm?.SaveCommand is not { } save)
+        {
+            return false;
+        }
+
+        await save.ExecuteAsync(null);
+        return !_vm.IsDirty;
+    }
+
+    private void OnRecentFileClicked(object sender, RoutedEventArgs e)
+    {
+        if (_vm is not null && sender is FrameworkElement { DataContext: RecentFileEntry entry })
+        {
+            // Commands can't be reached from inside a DataTemplate via ElementName,
+            // so dispatch explicitly from the item's DataContext.
+            if (_vm.OpenRecentCommand.CanExecute(entry))
+            {
+                _vm.OpenRecentCommand.Execute(entry);
+            }
+        }
+    }
+
     private void OnProblemClicked(object sender, ItemClickEventArgs e)
     {
         if (_vm is not null && e.ClickedItem is JsonDiagnostic diagnostic)
@@ -229,3 +283,12 @@ public sealed partial class MainPage : Page
             ? brush
             : null;
 }
+
+/// <summary>User's answer to the unsaved-changes prompt.</summary>
+public enum UnsavedChangesChoice
+{
+    Save,
+    DontSave,
+    Cancel,
+}
+

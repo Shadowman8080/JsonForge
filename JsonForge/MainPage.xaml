@@ -361,8 +361,7 @@
                   <ListView.ItemTemplate>
                     <DataTemplate>
                       <Button Content="{Binding DisplayName}"
-                              Command="{Binding DataContext.OpenRecentCommand, ElementName=ActionsButton}"
-                              CommandParameter="{Binding}"
+                              Click="OnRecentFileClicked"
                               HorizontalAlignment="Stretch"
                               HorizontalContentAlignment="Left"
                               Style="{StaticResource ToolbarButtonStyle}" />
