@@ -1,0 +1,380 @@
+﻿<Page x:Class="JsonForge.MainPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:local="using:JsonForge"
+      xmlns:vm="using:JsonForge.ViewModels"
+      xmlns:utu="using:Uno.Toolkit.UI"
+      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+  <Grid RowDefinitions="Auto,Auto,Auto,*" utu:SafeArea.Insets="VisibleBounds">
+
+    <!-- Toolbar -->
+    <Border Grid.Row="0" Background="{ThemeResource ToolbarBackgroundBrush}">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto"
+            Padding="10,6"
+            ColumnSpacing="10">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <TextBlock Text="JsonForge"
+                     FontWeight="SemiBold"
+                     FontSize="15"
+                     VerticalAlignment="Center" />
+          <TextBlock Text="JSON tools"
+                     FontSize="11"
+                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                     VerticalAlignment="Center" />
+        </StackPanel>
+
+        <Button x:Name="ActionsButton"
+                Grid.Column="1"
+                Style="{StaticResource ToolbarPrimaryButtonStyle}"
+                ToolTipService.ToolTip="Open actions menu">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Actions" />
+            <TextBlock Text="⌄" FontSize="13" />
+          </StackPanel>
+          <Button.Flyout>
+            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+              <MenuFlyoutItem Text="New" Command="{Binding DataContext.NewDocumentCommand, ElementName=ActionsButton}" />
+              <MenuFlyoutItem Text="Open..." Command="{Binding DataContext.OpenFileCommand, ElementName=ActionsButton}" />
+              <MenuFlyoutItem Text="Save" Command="{Binding DataContext.SaveCommand, ElementName=ActionsButton}" />
+              <MenuFlyoutItem Text="Save As..." Command="{Binding DataContext.SaveAsCommand, ElementName=ActionsButton}" />
+              <MenuFlyoutSeparator />
+              <MenuFlyoutItem Text="Format" Command="{Binding DataContext.FormatCommand, ElementName=ActionsButton}" />
+              <MenuFlyoutItem Text="Minify" Command="{Binding DataContext.MinifyCommand, ElementName=ActionsButton}" />
+              <MenuFlyoutItem Text="Sort Keys" Command="{Binding DataContext.SortKeysCommand, ElementName=ActionsButton}" />
+              <MenuFlyoutItem Text="Auto-Repair" Command="{Binding DataContext.AutoRepairCommand, ElementName=ActionsButton}" />
+              <MenuFlyoutSeparator />
+              <MenuFlyoutItem Text="AI Repair" Command="{Binding DataContext.AiFixCommand, ElementName=ActionsButton}" />
+              <MenuFlyoutItem Text="AI Format" Command="{Binding DataContext.AiFormatCommand, ElementName=ActionsButton}" />
+              <MenuFlyoutItem Text="AI Transform" Command="{Binding DataContext.AiTransformCommand, ElementName=ActionsButton}" />
+              <MenuFlyoutItem Text="AI Generate" Command="{Binding DataContext.AiGenerateCommand, ElementName=ActionsButton}" />
+              <MenuFlyoutItem Text="AI Explain" Command="{Binding DataContext.AiExplainCommand, ElementName=ActionsButton}" />
+              <MenuFlyoutSeparator />
+              <MenuFlyoutItem Text="Load Sample" Command="{Binding DataContext.LoadSampleCommand, ElementName=ActionsButton}" />
+            </MenuFlyout>
+          </Button.Flyout>
+        </Button>
+
+        <Button Grid.Column="3"
+                Style="{StaticResource ToolbarIconButtonStyle}"
+                Command="{Binding ShowSettingsCommand}"
+                ToolTipService.ToolTip="Settings">
+          <TextBlock Text="⚙" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Button>
+      </Grid>
+    </Border>
+
+    <!-- Status bar -->
+    <Grid Grid.Row="1"
+          ColumnDefinitions="*,Auto"
+          Background="{ThemeResource ToolbarBackgroundBrush}"
+          Padding="12,4">
+      <TextBlock Grid.Column="0"
+                 Text="{Binding StatusText}"
+                 FontSize="12"
+                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                 VerticalAlignment="Center" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <TextBlock Text="{Binding CurrentFileName}"
+                   FontSize="12"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        <TextBlock Text="{Binding DetectedFormatText}"
+                   FontSize="12"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        <TextBlock Text="{Binding AiProviderName}"
+                   FontSize="12"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        <ProgressRing IsActive="{Binding AiBusy}" Width="14" Height="14" Foreground="{ThemeResource AccentFillColorPrimaryBrush}" />
+      </StackPanel>
+    </Grid>
+
+    <!-- Find/Replace bar -->
+    <Border Grid.Row="2" Background="{ThemeResource ToolbarBackgroundBrush}" BorderBrush="{ThemeResource DividerBrush}" BorderThickness="0,1,0,0" Padding="10,4">
+      <Grid ColumnDefinitions="Auto,200,Auto,200,Auto,*,Auto" ColumnSpacing="6">
+        <TextBlock Text="Find" VerticalAlignment="Center" FontSize="12" />
+        <TextBox x:Name="FindBox" Grid.Column="1" PlaceholderText="Find..." FontSize="12" />
+        <TextBlock Grid.Column="2" Text="Replace" VerticalAlignment="Center" FontSize="12" />
+        <TextBox x:Name="ReplaceBox" Grid.Column="3" PlaceholderText="Replace with..." FontSize="12" />
+        <Button Grid.Column="4" Content="Replace All" Click="OnReplaceAllClick" FontSize="12" />
+        <Button Grid.Column="5" Content="Find Next" Click="OnFindNextClick" FontSize="12" HorizontalAlignment="Left" />
+        <Button Grid.Column="6" Content="Find Prev" Click="OnFindPrevClick" FontSize="12" />
+      </Grid>
+    </Border>
+
+    <!-- Body -->
+    <Grid Grid.Row="3" ColumnDefinitions="2*,1,340">
+
+      <!-- Editor -->
+      <Border Grid.Column="0" Background="{ThemeResource EditorBackgroundBrush}" BorderBrush="{ThemeResource DividerBrush}" BorderThickness="0,0,0,0">
+        <TextBox x:Name="Editor"
+                 Text="{Binding Source, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 AcceptsReturn="True"
+                 TextWrapping="NoWrap"
+                 FontFamily="Cascadia Mono, Consolas, monospace"
+                 FontSize="14"
+                 BorderThickness="0"
+                 Padding="16,12"
+                 Background="{ThemeResource EditorBackgroundBrush}"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 PlaceholderText="Paste or type JSON here..." />
+      </Border>
+
+      <!-- Divider -->
+      <Rectangle Grid.Column="1" Fill="{ThemeResource DividerBrush}" />
+
+      <!-- Right panel -->
+      <Border Grid.Column="2" Background="{ThemeResource PanelBackgroundBrush}">
+        <Grid RowDefinitions="Auto,*" Margin="0,6,0,0">
+
+          <!-- Pane tabs -->
+           <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center">
+            <RadioButton Content="Preview"
+                         GroupName="PaneTabs"
+                         IsChecked="{Binding IsPreviewSelected, Mode=OneWay}"
+                         Command="{Binding ShowPreviewCommand}"
+                         Style="{StaticResource PaneTabStyle}" />
+            <RadioButton Content="Tree"
+                         GroupName="PaneTabs"
+                         IsChecked="{Binding IsTreeSelected, Mode=OneWay}"
+                         Command="{Binding ShowTreeCommand}"
+                         Style="{StaticResource PaneTabStyle}" />
+            <RadioButton Content="Problems"
+                         GroupName="PaneTabs"
+                         IsChecked="{Binding IsProblemsSelected, Mode=OneWay}"
+                         Command="{Binding ShowProblemsCommand}"
+                         Style="{StaticResource PaneTabStyle}" />
+              <RadioButton Content="AI"
+                           GroupName="PaneTabs"
+                           IsChecked="{Binding IsAiSelected, Mode=OneWay}"
+                           Command="{Binding ShowAiCommand}"
+                           Style="{StaticResource PaneTabStyle}" />
+           </StackPanel>
+
+          <!-- Preview pane -->
+          <Grid Grid.Row="1"
+                Visibility="{Binding IsPreviewSelected, Converter={StaticResource BoolToVisibility}}"
+                RowDefinitions="Auto,*">
+            <TextBlock Grid.Row="0"
+                       Text="Syntax preview (live)"
+                       FontSize="11"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Margin="12,4,12,6" />
+            <ScrollViewer Grid.Row="1"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto">
+              <StackPanel x:Name="PreviewHost" Margin="12" />
+            </ScrollViewer>
+          </Grid>
+
+          <!-- Tree pane -->
+          <Grid Grid.Row="1"
+                Visibility="{Binding IsTreeSelected, Converter={StaticResource BoolToVisibility}}"
+                RowDefinitions="Auto,*">
+            <TextBlock Grid.Row="0"
+                       Text="JSON Tree"
+                       FontSize="11"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Margin="12,4,12,6" />
+            <TreeView Grid.Row="1" ItemsSource="{Binding TreeNodes}">
+              <TreeView.ItemTemplate>
+                <DataTemplate>
+                  <TreeViewItem ItemsSource="{Binding Children}" Content="{Binding Name}" />
+                </DataTemplate>
+              </TreeView.ItemTemplate>
+            </TreeView>
+          </Grid>
+
+          <!-- Problems pane -->
+          <Grid Grid.Row="1"
+                Visibility="{Binding IsProblemsSelected, Converter={StaticResource BoolToVisibility}}"
+                RowDefinitions="Auto,*">
+            <TextBlock Grid.Row="0"
+                       Text="Problems"
+                       FontSize="11"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Margin="12,4,12,6" />
+            <ListView x:Name="ProblemsList"
+                      Grid.Row="1"
+                      ItemsSource="{Binding Problems}"
+                      IsItemClickEnabled="True"
+                      ItemClick="OnProblemClicked"
+                      SelectionMode="None"
+                      Visibility="{Binding ProblemsListVisibility}">
+              <ListView.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="Auto,*" Padding="0,5">
+                    <TextBlock Grid.Column="0"
+                               FontSize="11"
+                               Width="52"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="{Binding Location}" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontSize="13" />
+                      <TextBlock Text="{Binding Code}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ListView.ItemTemplate>
+            </ListView>
+            <TextBlock Grid.Row="1"
+                       Text="No problems found." 
+                       Margin="12,8"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Visibility="{Binding ProblemsEmptyVisibility}" />
+          </Grid>
+
+           <!-- AI pane -->
+           <Grid Grid.Row="1"
+                 Visibility="{Binding IsAiSelected, Converter={StaticResource BoolToVisibility}}"
+                RowDefinitions="Auto,Auto,Auto,*"
+                Padding="12,4,12,12"
+                RowSpacing="8">
+            <TextBlock Grid.Row="0"
+                       Text="AI Assistant"
+                       FontSize="13"
+                       FontWeight="SemiBold" />
+            <StackPanel Grid.Row="1" Spacing="6" Visibility="{Binding AiPanelVisibility}">
+              <TextBox x:Name="InstructionBox"
+                       PlaceholderText="Instruction: e.g. convert dates to ISO, shorten values, ..."
+                       Text="{Binding AiInstruction, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                       AcceptsReturn="True"
+                       TextWrapping="Wrap"
+                       MaxHeight="96"
+                       FontSize="13" />
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button Content="Transform"
+                        Style="{StaticResource ToolbarButtonStyle}"
+                        BorderThickness="1"
+                        Command="{Binding AiTransformCommand}" />
+                <Button Content="Generate"
+                        Style="{StaticResource ToolbarButtonStyle}"
+                        BorderThickness="1"
+                        Command="{Binding AiGenerateCommand}" />
+              </StackPanel>
+            </StackPanel>
+            <TextBlock Grid.Row="2"
+                       Text="{Binding AiGuidanceText}"
+                       TextWrapping="Wrap"
+                       FontSize="12"
+                       Foreground="{ThemeResource JsonStringBrush}"
+                       Visibility="{Binding AiGuidanceVisibility}" />
+            <Border Grid.Row="3"
+                    BorderBrush="{ThemeResource DividerBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="10"
+                    MinHeight="120">
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="{Binding AiSummary}"
+                             TextWrapping="Wrap"
+                             FontStyle="Italic"
+                             FontSize="12"
+                             Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                  <TextBlock Text="{Binding AiError}"
+                             TextWrapping="Wrap"
+                             FontSize="12"
+                             Foreground="{ThemeResource JsonErrorBrush}" />
+                  <TextBlock Text="{Binding AiOutput}"
+                             TextWrapping="Wrap"
+                             FontSize="12"
+                             FontFamily="Cascadia Mono, Consolas, monospace" />
+                </StackPanel>
+              </ScrollViewer>
+            </Border>
+           </Grid>
+
+          <!-- Settings pane -->
+          <Grid Grid.Row="1"
+                Visibility="{Binding IsSettingsSelected, Converter={StaticResource BoolToVisibility}}"
+                Padding="12,4,12,12"
+                RowDefinitions="Auto,*"
+                RowSpacing="8">
+            <TextBlock Grid.Row="0" Text="Settings" FontSize="13" FontWeight="SemiBold" />
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+              <StackPanel Spacing="10">
+                <TextBlock Text="Formatting" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+                <StackPanel>
+                  <TextBlock Text="Indent" FontSize="12" />
+                  <ComboBox SelectedIndex="{Binding IndentIndex, Mode=TwoWay}">
+                    <ComboBoxItem Content="Minified" />
+                    <ComboBoxItem Content="2 spaces" />
+                    <ComboBoxItem Content="4 spaces" />
+                    <ComboBoxItem Content="Tab" />
+                  </ComboBox>
+                </StackPanel>
+
+                <CheckBox Content="Sort keys by default" IsChecked="{Binding SortKeysDefault, Mode=TwoWay}" />
+                <CheckBox Content="Relaxed escaping (keep Unicode readable)" IsChecked="{Binding RelaxedEscaping, Mode=TwoWay}" />
+                <CheckBox Content="Add trailing newline" IsChecked="{Binding TrailingNewline, Mode=TwoWay}" />
+
+                <TextBlock Text="Validation" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <StackPanel>
+                  <TextBlock Text="Strictness" FontSize="12" />
+                  <ComboBox SelectedIndex="{Binding ValidationStrictnessIndex, Mode=TwoWay}">
+                    <ComboBoxItem Content="Strict JSON" />
+                    <ComboBoxItem Content="JSONC" />
+                    <ComboBoxItem Content="JSON-ish" />
+                  </ComboBox>
+                </StackPanel>
+
+                <TextBlock Text="Automation" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <CheckBox Content="Auto-format on paste" IsChecked="{Binding AutoFormatOnPaste, Mode=TwoWay}" />
+                <CheckBox Content="Auto-format when idle (only when valid)" IsChecked="{Binding AutoFormatOnIdle, Mode=TwoWay}" />
+
+                <StackPanel>
+                  <TextBlock Text="Idle delay (ms)" FontSize="12" />
+                  <Slider Minimum="200" Maximum="5000" Value="{Binding AutoFormatIdleMs, Mode=TwoWay}" SmallChange="100" LargeChange="500" />
+                  <TextBlock Text="{Binding AutoFormatIdleMs}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+
+                <TextBlock Text="AI" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <Button Content="Start self-hosted AI (Ollama)" Command="{Binding StartLocalAiCommand}" Style="{StaticResource ToolbarPrimaryButtonStyle}" />
+                <CheckBox Content="Enable AI (explicit)" IsChecked="{Binding AiEnabledSetting, Mode=TwoWay}" />
+                <CheckBox Content="Auto-enable local AI on startup" IsChecked="{Binding AiAutoEnableSetting, Mode=TwoWay}" />
+                <StackPanel>
+                  <TextBlock Text="Provider name" FontSize="12" />
+                  <TextBox Text="{Binding AiProviderNameSetting, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+                <StackPanel>
+                  <TextBlock Text="Model" FontSize="12" />
+                  <TextBox Text="{Binding AiModelSetting, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="e.g. qwen2.5-coder:7b or gpt-4o-mini" />
+                </StackPanel>
+                <StackPanel>
+                  <TextBlock Text="Endpoint (OpenAI-compatible)" FontSize="12" />
+                  <TextBox Text="{Binding AiEndpointSetting, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="http://localhost:11434/v1 or leave empty for OpenAI" />
+                </StackPanel>
+                <StackPanel>
+                  <TextBlock Text="API key" FontSize="12" />
+                  <TextBox Text="{Binding AiApiKeySetting, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Leave empty for local" />
+                </StackPanel>
+                <StackPanel>
+                  <TextBlock Text="Max tokens" FontSize="12" />
+                  <Slider Minimum="256" Maximum="8192" Value="{Binding AiMaxTokensSetting, Mode=TwoWay}" SmallChange="256" LargeChange="1024" />
+                  <TextBlock Text="{Binding AiMaxTokensSetting}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+
+                <TextBlock Text="Recent files" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <ListView ItemsSource="{Binding RecentFiles}" SelectionMode="None">
+                  <ListView.ItemTemplate>
+                    <DataTemplate>
+                      <Button Content="{Binding DisplayName}"
+                              Command="{Binding DataContext.OpenRecentCommand, ElementName=ActionsButton}"
+                              CommandParameter="{Binding}"
+                              HorizontalAlignment="Stretch"
+                              HorizontalContentAlignment="Left"
+                              Style="{StaticResource ToolbarButtonStyle}" />
+                    </DataTemplate>
+                  </ListView.ItemTemplate>
+                </ListView>
+                <Button Content="Clear recent files" Command="{Binding ClearRecentFilesCommand}" Style="{StaticResource ToolbarButtonStyle}" />
+              </StackPanel>
+            </ScrollViewer>
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</Page>
